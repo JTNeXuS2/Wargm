@@ -9,7 +9,7 @@
 
 ## shopid и shop_token
 например https://wargm.ru/shop/105/
- ![wargm_api.png](https://junger.zzux.com/webhook/guide/wargm_api.png)
+ ![wargm_api.png](https://junger.zzux.com/webhook/guide/wargm_shop_api.png)
  
 => это номер вашего магазина на сайте там же генерируем API ключ
 
