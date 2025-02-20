@@ -90,7 +90,11 @@ async def get_traid(operations):
     formatted_date = future_date.strftime("%Y-%m-%d")
 
     for key, value in operations['responce']['data'].items():
-        print("---")
+        if f"{value.get('claimed')}" == "1":
+            print(f'claimed!')
+            break
+
+        print("--- Operation ---")
         print("id:", value.get('id'))
         print("player:", value.get('player'))
         print("user_id:", value.get('user_id'))
@@ -102,7 +106,8 @@ async def get_traid(operations):
         print("set_count:", value.get('set_count'))
         print("buy_count:", value.get('buy_count'))
         print("status:", value.get('status'))
-
+        print("claimed:", value.get('claimed'))
+        
         id = value.get('id')
         player = value.get('player')
         user_id = value.get('user_id')
@@ -114,22 +119,46 @@ async def get_traid(operations):
         set_count = value.get('set_count')
         buy_count = value.get('buy_count')
         status = value.get('status')
+        claimed = value.get('claimed')
+
         #начислить
         if str(offer_id) in lists:
             print(f"offer_id {offer_id} найден в словаре lists.")
             value = lists[str(offer_id)]
             target_server_id = value.split(':')[0].strip()
-            print(f' начисляем на сервере {target_server_id}')
+            print(f'начисляем на сервере {target_server_id}')
+            channel = await bot.fetch_channel(channel_id)
             try:
-                print(f"Бонусы действительны {bonusdays} дней: {formatted_date}")
+                #Операция начисления
                 url = f'{wargm_url}/add_bonus?client={shopid}:{shop_token}&user_id={user_id}&server_id={target_server_id}&amount={buy_count}&expire={formatted_date}'
                 response = requests.get(url)
                 if response.status_code == 200:
+                    data = response.json()
+                    if data.get("responce", {}).get("status") == "error":
+                        msg = data["responce"].get("msg", "Нет сообщения")
+                        print(f"-> Ошибка wargm API: {msg}")
+                        print("Содержимое ответа:", json.dumps(data, indent=4))
+                        url = f'{wargm_url}/operation_cancel?client={shopid}:{shop_token}&operation_id={id}'
+                        response = requests.get(url)
+                        if response.status_code == 200:
+                            await channel.send(f'Ошибка операции **{id}**\n'
+                                               f'Описание: **{msg}**\n'
+                                               f'**Бонусы возвращены: {buy_count}**\n'
+                                               f'Ник: **{player}**\n'
+                                               f'Аккаунт: **{user_id}**\n'
+                                               f'Steam ID: **{user_steam_id}**\n'
+                                               f'Сервер списания wargm.ru/server/{server_id}/votes\n'
+                                               f'Сервер начисления wargm.ru/server/{target_server_id}/votes\n'
+                                               f'Ответ WG API:" {json.dumps(data, indent=4)} @here'
+                                               )
+                            print("Позиция отменена\n")
+                        break
+                    print(f"Бонусы начислены и действительны {bonusdays} дней: {formatted_date}")
+
+                    #Закрываем операцию
                     url = f'{wargm_url}/operation_success?client={shopid}:{shop_token}&operation_id={id}'
                     response = requests.get(url)
                     if response.status_code == 200:
-                        print("Позиция закрыта бонусы начислены")
-                        channel = await bot.fetch_channel(channel_id)
                         await channel.send(f'Выполнена операция **{id}**\n'
                                            f'Бонусы зачислены: **{buy_count}**\n'
                                            f'Ник: **{player}**\n'
@@ -138,6 +167,7 @@ async def get_traid(operations):
                                            f'Сервер списания wargm.ru/server/{server_id}/votes\n'
                                            f'Сервер начисления wargm.ru/server/{target_server_id}/votes\n'
                                            )
+                        print("Позиция закрыта\n")
             except Exception as e:
                 print("Ошибка при начислении. Код ошибки:", response.status_code)
 
