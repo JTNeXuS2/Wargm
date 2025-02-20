@@ -134,6 +134,7 @@ async def get_traid(operations):
                 response = requests.get(url)
                 if response.status_code == 200:
                     data = response.json()
+                    #Операция c ошибкой?
                     if data.get("responce", {}).get("status") == "error":
                         msg = data["responce"].get("msg", "Нет сообщения")
                         print(f"-> Ошибка wargm API: {msg}")
